@@ -1,0 +1,15 @@
+[Desktop Entry]
+
+Type=Application
+
+Exec= /usr/bin/kodi
+
+Hidden=false
+
+NoDisplay=false
+
+X-GNOME-Autostart-enabled=true
+
+Name=Kodi-start
+
+Comment=start kodi

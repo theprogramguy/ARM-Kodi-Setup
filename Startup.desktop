@@ -1,0 +1,17 @@
+[Desktop Entry]
+
+Type=Application
+
+Exec=/opt/ARM-Kodi-Setup/start.sh
+
+Hidden=false
+
+NoDisplay=false
+
+X-GNOME-Autostart-enabled=true
+
+Name=Kodi-start
+
+Comment=start everything
+Name[en_US]=startup.desktop
+

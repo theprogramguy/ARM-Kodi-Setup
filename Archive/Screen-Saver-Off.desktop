@@ -1,0 +1,15 @@
+[Desktop Entry]
+
+Type=Application
+
+Exec=/opt/ARM-Kodi-Setup/screensave_off.sh
+
+Hidden=false
+
+NoDisplay=false
+
+X-GNOME-Autostart-enabled=true
+
+Name=Screen-Saver-Off
+
+Comment=to turn off the Xserver power save

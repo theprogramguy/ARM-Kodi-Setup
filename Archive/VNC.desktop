@@ -1,0 +1,17 @@
+[Desktop Entry]
+
+Type=Application
+
+Exec=/opt/ARM-Kodi-Setup/start_vnc.sh
+
+Hidden=false
+
+NoDisplay=false
+
+X-GNOME-Autostart-enabled=true
+
+Name=Kodi-start
+
+Comment=start kodi
+Name[en_US]=VNC.desktop
+
