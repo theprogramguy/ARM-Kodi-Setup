@@ -8,7 +8,7 @@ NL="
 "
 IPCOMPLETE=false
 gateway=""
-
+netmask=$(/sbin/ifconfig wlan0 | awk '/Mask:/{ print $4;} ')
 CurrentIF=$(nmcli --terse --fields DEVICE,STATE dev status|grep connected| cut -d\: -f1)
 
 echo "nameserver 192.168.0.1" | sudo tee /etc/resolv.conf
