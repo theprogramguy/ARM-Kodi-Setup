@@ -7,13 +7,54 @@ DNSServer2=""
 NL="
 "
 IPCOMPLETE=false
+IP_MODE="unknown"
 gateway=""
-netmask=$(/sbin/ifconfig wlan0 | awk '/Mask:/{ print $4;} ')
-CurrentIF=$(nmcli --terse --fields DEVICE,STATE dev status|grep connected| cut -d\: -f1)
+SERVERMODE="CLIENT"
+TARGET_IP_MODE="STATIC"
 
-echo "nameserver 192.168.0.1" | sudo tee /etc/resolv.conf
-echo "nameserver 8.8.8.8
-nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf
+theUser=$(whoami)
+theLogger=$(logname)
+
+
+
+
+#CurrentIF=$(nmcli --terse --fields DEVICE,STATE dev status|grep connected| cut -d\: -f1)
+CurrentIF=$(ip addr | grep "state UP" | cut -d: -f2 | sed -e 's/^ *//' -e 's/ *$//')
+netmask=$(/sbin/ifconfig $CurrentIF | awk '/netmask/{ print $4;} ')
+read _ _ gateway _ < <(ip route list match 0/0)
+CurrentIP=$(ifconfig enp3s0 | grep "inet " | awk -F'[: ]+' '{ print $3 }')
+CurrentHostname=$(hostname)
+
+if grep $CurrentIF /etc/network/interfaces | grep iface | grep -v \# | grep -q dhcp; then
+    	#echo "found dhcp"
+	IP_MODE="DHCP"
+else
+    	#echo "did not find dhcp"
+	
+	if grep $CurrentIF /etc/network/interfaces | grep iface | grep -v \# | grep -q static; then
+    		#echo "found static"
+		IP_MODE="STATIC"
+	else
+		#echo "netmanager still managing"
+		IP_MODE="NETMANAGER.STATIC"
+		if ps ax | grep dhclient | grep -q $CurrentIF; then
+			#netmamanger managed and its dhcp
+			IP_MODE="NETMANAGER.DHCP"	
+		fi
+	fi
+fi
+
+
+echo "Current interface for $CurrentHostname is $CurrentIF:
+Mode:$IP_MODE
+IP:$CurrentIP
+Mask:$netmask
+GW:$gateway" 
+
+#echo $gateway
+
+
+
 
 
 
@@ -24,8 +65,7 @@ nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf
 Get_Verify_Server () {
 read -p "Enter IP for server:" ServerIP
 #CurrentGW = $(read _ _ gateway _ < <(ip route list match 0/0))
-read _ _ gateway _ < <(ip route list match 0/0)
-echo $gateway
+
 
 read -n1 -r -p "Current Gateway is $gateway, use this gateway?  Y/N/Escape: $NL" button
 case $button in
@@ -61,26 +101,39 @@ IPCOMPLETE=true
 }
 
 
-
-#echo "manual" | sudo tee /etc/init/network-manager.override 
-#ps ax | grep dhclient | grep enp3s0
-#cat /etc/network/interfaces |grep ^iface\ eth0 | awk -F ' ' '{print $4}'
-
-
-
-
-
-
-
-
+disable_netmanager () {
+echo $pass | sudo -S resolvconf --disable-updates
+echo $pass | sudo -S apt-get remove network-manager dnsmasq -y
+echo $pass | sudo -S dpkg --purge network-manager dnsmasq
+echo $pass | sudo -S rm /etc/resolv.conf
+echo $pass | sudo -S -v
+echo "nameserver 8.8.8.8
+nameserver 8.8.4.4
+nameserver $gateway" | sudo tee /etc/resolv.conf
+}
 
 
 
+
+
+###############################################################################################################
+###############################################################################################################
+###############################################################################################################
+###############################################################################################################
+###############################################################################################################
+###############################################################################################################
+###############################################################################################################
+###############################################################################################################
+###############################################################################################################
+###############################################################################################################
+###############################################################################################################
+###############################################################################################################
+###############################################################################################################
+
+# 1
 
 #lets figure out who the user is here, and make sure the password is correct, and that we are not root!
-theUser=$(whoami)
-theLogger=$(logname)
-SERVER=false
+
 if [ "$theUser" == "root" ]; then
  	echo "Do not run as root, or sudo this command"
 	exit
@@ -91,8 +144,7 @@ read -s -p "Enter password for $theUser: $NL" pass
 
 suCheck=$(echo $pass | sudo -S ./Test_SU.sh)
 
-echo "
-"
+echo $NL
 
 if [ "$theUser" == "root" ]; then
  	echo "Do not run as root -- you will never get here, why dont I remove this?"
@@ -106,18 +158,39 @@ else
 fi
 
 read -n1 -r -p "Is this the server? Y/N/Escape:" key
-echo ""
+echo $NL
 case $key in
 Y)
     ;&
 y)
-    echo "yes"
-    SERVER=true
+    #echo "yes"
+    SERVERMODE="SERVER"
     ;;
 n)
     ;&
 N)
-    echo "NO"
+    #echo "NO"
+    SERVERMODE="CLIENT"
+	read -n1 -r -p "Will this client RIP? Y/N/Escape:" key2
+	echo $NL
+	case $key2 in
+	Y)
+	    ;&
+	y)
+	    #echo "yes ripping client"
+	    SERVERMODE="RIPCLIENT"
+	    ;;
+	n)
+	    ;&
+	N)
+	    #echo "NO"
+	    SERVERMODE="CLIENT"
+	    ;;
+	*) 
+	    echo "OTHER"
+	    exit
+	    ;;
+	esac
     ;;
 *) 
     echo "OTHER"
@@ -125,9 +198,152 @@ N)
     ;;
 esac
 
-echo $SERVER
+echo $SERVERMODE
 
-echo $CurrentIF
+
+IP_MODE="DHCP"
+
+
+case $IP_MODE in
+	*DHCP)
+		case $SERVERMODE in
+			CLIENT)
+				;&
+			RIPCLIENT)
+				read -n1 -r -p "Clients do no need static IP, would you like to set a static IP? Y/N/Escape:" key
+				echo $NL
+				case $key in
+				Y)
+				    ;&
+				y)
+				    echo "yes set static"
+					TARGET_IP_MODE="STATIC"
+					exit
+				    ;;
+				n)
+				    ;&
+				N)
+				    echo "NO static"
+				    
+					read -n1 -r -p "It is still recomended to disable netmanager, disable now? Y/N/Escape:" key2
+					echo $NL
+					case $key2 in
+					Y)
+					    ;&
+					y)
+					    echo "disable netmanager and set dhcp"
+						TARGET_IP_MODE="DHCP"
+					    ;;
+					n)
+					    ;&
+					N)
+					    echo "leave ip and netmanager alone."
+					    ;;
+					*) 
+					    echo "OTHER"
+					    exit
+					    ;;
+					esac
+				    ;;
+				*) 
+				    echo "OTHER"
+				    exit
+				    ;;
+				esac
+				;;
+
+			SERVER)
+		
+				read -n1 -r -p "Servers SHOULD have a static IP, would you like to set a static IP? Y/N/Escape:" key
+				echo $NL
+				case $key in
+				Y)
+				    ;&
+				y)
+				    echo "yes set static"
+					TARGET_IP_MODE="STATIC"
+					exit
+				    ;;
+				n)
+				    ;&
+				N)
+				    echo "NO static"
+				    
+					read -n1 -r -p "It is still recomended to disable netmanager, disable now? Y/N/Escape:" key2
+					echo $NL
+					case $key2 in
+					Y)
+					    ;&
+					y)
+					    echo "disable netmanager and set dhcp server"
+						
+						TARGET_IP_MODE="DHCP"
+						disable_netmanager
+					    ;;
+					n)
+					    ;&
+					N)
+					    echo "leave ip and netmanager alone. server"
+						
+					    ;;
+					*) 
+					    echo "OTHER"
+					    exit
+					    ;;
+					esac
+				    ;;
+				*) 
+				    echo "OTHER"
+				    exit
+				    ;;
+				esac
+				;;
+
+
+			*) 
+		    		echo "OTHER servermode type?"
+		    		exit
+		    		;;
+		esac
+		;;
+	NETMANAGER.STATIC)
+		echo "ALREADY STATIC, but netmamanger"
+			read -n1 -r -p "It is still recomended to disable netmanager, disable now? Y/N/Escape:" key2
+			echo $NL
+			case $key2 in
+			Y)
+			    ;&
+			y)
+			    echo "disable netmanager and set current IP"
+				TARGET_IP_MODE="CURRENT"
+			    ;;
+			n)
+			    ;&
+			N)
+			    echo "leave ip and netmanager alone. server"
+				
+			    ;;
+			*) 
+			    echo "OTHER"
+			    exit
+			    ;;
+			esac
+		
+		;;
+	*STATIC)
+		echo "ALREADY STATIC"
+		;;
+
+	*)
+		echo "OTHER ip mode type, error"
+    		exit
+    		;;
+	
+esac
+
+
+
+exit
 
 while [ $IPCOMPLETE==false ]; do
 	result=$( Get_Verify_Server )
@@ -148,8 +364,6 @@ xset -dpms
 #apt-get install ------- get filebot 
 
 
-sudo apt-get remove network-manager
-sudo dpkg --purge network-manager
 
 
 echo $pass | sudo -S add-apt-repository ppa:heyarje/makemkv-beta -y
@@ -160,7 +374,7 @@ echo $pass | sudo -S apt-get update -y
 echo $pass | sudo -S apt dist-upgrade -y
 echo $pass | sudo -S apt upgrade -y
 
-echo $pass | sudo -S apt install makemkv-bin makemkv-oss regionset handbrake-cli handbrake-gtk libavcodec-extra abcde flac imagemagick glyrc cdparanoia at python3 python3-pip libdvd-pkg cifs-utils software-properties-common dconf-editor git libcurl4-openssl-dev libssl-dev ffmpeg ffmpegthumbnailer imagemagick tesseract-ocr tesseract-ocr-eng hwinfo gksu openssh-server nfs-kernel-server tcp-dump rsync debconf-utils x11vnc kodi lightdm -y
+echo $pass | sudo -S apt install makemkv-bin makemkv-oss regionset handbrake-cli handbrake-gtk libavcodec-extra abcde flac imagemagick glyrc cdparanoia at python3 python3-pip libdvd-pkg cifs-utils software-properties-common dconf-editor git libcurl4-openssl-dev libssl-dev ffmpeg ffmpegthumbnailer imagemagick tesseract-ocr tesseract-ocr-eng hwinfo gksu openssh-server nfs-kernel-server tcp-dump rsync debconf-utils x11vnc kodi lightdm ack-grep hexedit -y
 
 echo $pass | sudo -S pip3 install --upgrade pip
 echo $pass | sudo -S pip3 install tendo pyyaml peewee
@@ -177,13 +391,13 @@ echo $pass | sudo -S ln -s /opt/arm/.abcde.conf /root/
 echo $pass | sudo -S cp config.sample config
 
 
-
-echo $pass | sudo -S mkdir /mnt/media
+echo $pass | sudo -S mkdir -p /mnt/media
+echo $pass | sudo -S mkdir -p /mnt/media/ARM
 echo $pass | sudo -S mkdir -p /mnt/media/ARM/raw
-echo $pass | sudo -S mkdir -p /mnt/media/ARM/music
-echo $pass | sudo -S mkdir -p /mnt/media/ARM/movies
-echo $pass | sudo -S mkdir -p /mnt/media/ARM/unidentified
-echo $pass | sudo -S mkdir -p /mnt/media/ARM/tv
+echo $pass | sudo -S mkdir -p /mnt/media/ARM/Music
+echo $pass | sudo -S mkdir -p /mnt/media/ARM/Movies
+echo $pass | sudo -S mkdir -p /mnt/media/ARM/Unidentified
+echo $pass | sudo -S mkdir -p /mnt/media/ARM/TV
 echo $pass | sudo -S /etc/init.d/udev restart       
 #udevadm trigger --action=change 
 
@@ -218,20 +432,7 @@ echo $pass | sudo -S dpkg-reconfigure libdvd-pkg
 
 #move all this to one file to sudo once
 
-xhost +SI:localuser:lightdm
-gsettings set com.canonical.unity-greeter draw-grid false
-gsettings set com.canonical.unity-greeter draw-user-backgrounds false
-gsettings set com.canonical.unity-greeter background ''
-gsettings set com.canonical.unity-greeter background-logo ''
-gsettings set org.gnome.desktop.screensaver idle-activation-enabled 0
 
-gsettings set org.gnome.desktop.screensaver lock-delay 3600
-gsettings set org.gnome.desktop.screensaver lock-enabled false
-gsettings set org.gnome.desktop.screensaver idle-activation-enabled false
-setterm -blank 0
-setterm -powerdown 0 
-xset s off
-xset -dpms
 
 
 
@@ -270,6 +471,29 @@ xset -dpms
 #su lightdm -s /bin/bash
 #dconf-editor
 #com.canonical.unity-greeter background,draw-grid,draw-user-backgroundd
+
+kodi=$(avahi-browse _kodimediaserver._tcp -k -r -p -t)
+echo $kodi
+
+
+exit
+setfacl -R -m u:arm:rwx /opt/arm/
+setfacl -R -m u:arm:rwx /opt/ARM-Kodi-Setup/
+setfacl -R -m u:arm:rwx /mnt/media/ARM/
+
+
+
+echo $pass | sudo -S -v
+
+echo "/mnt/media/ARM	*(rw,sync,no_root_squash,insecure)" | sudo tee -a /etc/exports
+
+
+
+#echo "manual" | sudo tee /etc/init/network-manager.override 
+
+#cat /etc/network/interfaces |grep ^iface\ eth0 | awk -F ' ' '{print $4}'
+
+
 
 
 

@@ -1,0 +1,16 @@
+<?xml version="1.0" standalone='no'?>
+ <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+ <service-group>
+   <name replace-wildcards="yes">%h.local</name>  
+   <service>
+     <type>_kodimediaserver._tcp</type>
+     <port>11001</port>
+     <txt-record>TV=/mnt/media/ARM/Media/TV/</txt-record>
+     <txt-record>MOVIES=/mnt/media/ARM/Media/Movies/</txt-record>
+     <txt-record>MUSIC=/mnt/media/ARM/Media/Music/</txt-record>
+     <txt-record>PHOTOS=/mnt/media/ARM/Media/Photos/</txt-record>
+     <txt-record>Kodi=true</txt-record>
+   </service>
+
+ </service-group>
+
