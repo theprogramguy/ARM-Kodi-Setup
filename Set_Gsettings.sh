@@ -9,7 +9,7 @@ gsettings set com.canonical.unity-greeter draw-grid false
 gsettings set com.canonical.unity-greeter draw-user-backgrounds false
 gsettings set com.canonical.unity-greeter background ''
 gsettings set com.canonical.unity-greeter background-logo ''
-gsettings set org.gnome.desktop.screensaver idle-activation-enabled 0
+gsettings set org.gnome.desktop.screensaver idle-activation-enabled false
 gsettings set org.gnome.desktop.screensaver lock-delay 3600
 gsettings set org.gnome.desktop.screensaver lock-enabled false
 gsettings set org.gnome.desktop.screensaver idle-activation-enabled false
