@@ -10,6 +10,7 @@
      <txt-record>MUSIC=/mnt/media/ARM/Media/Music/</txt-record>
      <txt-record>PHOTOS=/mnt/media/ARM/Media/Photos/</txt-record>
      <txt-record>Kodi=true</txt-record>
+	<txt-record>KodiServer=true</txt-record>
    </service>
 
  </service-group>

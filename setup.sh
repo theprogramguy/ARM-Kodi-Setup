@@ -15,9 +15,6 @@ TARGET_IP_MODE="STATIC"
 theUser=$(whoami)
 theLogger=$(logname)
 
-
-
-
 #CurrentIF=$(nmcli --terse --fields DEVICE,STATE dev status|grep connected| cut -d\: -f1)
 CurrentIF=$(ip addr | grep "state UP" | cut -d: -f2 | sed -e 's/^ *//' -e 's/ *$//')
 netmask=$(/sbin/ifconfig $CurrentIF | awk '/netmask/{ print $4;} ')
@@ -287,6 +284,25 @@ else
 	fi
 fi
 
+########## LETS SET ATTRIBUTES ################
+
+
+echo $pass | sudo -S chmod +x /opt/ARM-Kodi-Setup/Startup.desktop
+echo $pass | sudo -S chmod +x /opt/ARM-Kodi-Setup/Startup.sh
+
+#make sure the user not root is owner
+echo $pass | sudo -S chown $theUser /opt/ARM-Kodi-Setup/Startup.desktop
+echo $pass | sudo -S chown $theUser /opt/ARM-Kodi-Setup/Startup.sh
+
+echo $pass | sudo -S chmod +x /opt/ARM-Kodi-Setup/Set_Gsettings.sh
+
+echo $pass | sudo -S /opt/ARM-Kodi-Setup/Set_Gsettings.sh
+
+
+
+
+echo $NL
+echo $NL
 read -n1 -r -p "Is this the server? Y/N/Escape:" key
 echo $NL
 case $key in
@@ -465,16 +481,33 @@ echo "passed ipcheck"
 
 case $SERVERMODE in
 	*)
+
 		echo $pass | sudo -S setfacl -m u:$theUser:rwx /opt/ARM-Kodi-Setup/
 		echo $pass | sudo -S setfacl -R -m u:$theUser:rwx /opt/
 		echo $pass | sudo -S setfacl -R -m u:$theUser:rwx /mnt/media/ARM/
 
 		xset s off
 		xset -dpms
-		echo $pass | sudo -S add-apt-repository ppa:heyarje/makemkv-beta -y
-		echo $pass | sudo -S add-apt-repository ppa:stebbins/handbrake-releases -y 
-		echo $pass | sudo -S add-apt-repository ppa:mc3man/xerus-media -y
-		echo $pass | sudo -S add-apt-repository ppa:team-xbmc/ppa -y
+
+		if ! ls /etc/apt/sources.list.d/*team-xbmc* | grep team-xbmc; then
+		  echo $pass | sudo -S add-apt-repository ppa:team-xbmc/ppa -y
+		fi
+
+		if ! ls /etc/apt/sources.list.d/*heyarje* | grep heyarje; then
+		  echo $pass | sudo -S add-apt-repository ppa:heyarje/makemkv-beta -y
+		fi
+
+		if ! ls /etc/apt/sources.list.d/*stebbins* | grep stebbins; then
+		  echo $pass | sudo -S add-apt-repository ppa:stebbins/handbrake-releases -y
+		fi
+
+		if ! ls /etc/apt/sources.list.d/*mc3man* | grep mc3man; then
+		  echo $pass | sudo -S add-apt-repository ppa:mc3man/xerus-media -y
+		fi
+		
+		 
+		
+		
 		echo $pass | sudo -S apt-get update -y
 		echo $pass | sudo -S apt dist-upgrade -y
 		echo $pass | sudo -S apt upgrade -y
@@ -483,24 +516,16 @@ case $SERVERMODE in
 		mkdir /home/$theUser/.config/autostart
 		##reset the execute property, just in case
 
-		echo $pass | sudo -S chmod +x /opt/ARM-Kodi-Setup/Startup.desktop
-		echo $pass | sudo -S chmod +x /opt/ARM-Kodi-Setup/Startup.sh
-
-		#make sure the user not root is owner
-		echo $pass | sudo -S chown $theUser /opt/ARM-Kodi-Setup/Startup.desktop
-		echo $pass | sudo -S chown $theUser /opt/ARM-Kodi-Setup/Startup.sh
-		echo $pass | sudo -S chown $theUser /opt/ARM-Kodi-Setup/autostart/
-
 		#send the files to $theLogger autostart dir
 		echo $pass | sudo -S ln -s /opt/ARM-Kodi-Setup/Startup.desktop /home/$theUser/.config/autostart
-
+		echo $pass | sudo -S setfacl -m u:$theUser:rwx /opt/ARM-Kodi-Setup/
 		
 		
 	;;&
 	CLIENT)
 		echo "CLIENT only stuff"
 		echo $pass | sudo -S apt install dconf-editor debconf-utils x11vnc kodi kodi-eventclients-kodi-send lightdm rar -y
-		echo $pass | sudo -S ln -s /opt/ARM-Kodi-Setup/CLIENT.service /etc/avahi/services/
+		echo $pass | sudo -S ln /opt/ARM-Kodi-Setup/CLIENT.service /etc/avahi/services/
 	;;
 	SERVER|RIPCLIENT)
 		echo "SERVER and RIPCLIENT stuff"
@@ -532,9 +557,10 @@ case $SERVERMODE in
 		echo $pass | sudo -S mkdir -p /mnt/media/ARM/Movies
 		echo $pass | sudo -S mkdir -p /mnt/media/ARM/Unidentified
 		echo $pass | sudo -S mkdir -p /mnt/media/ARM/TV
+		echo $pass | sudo -S setfacl -R -m u:$theUser:rwx /mnt/media/ARM/
 		echo $pass | sudo -S /etc/init.d/udev restart  
 		echo "/mnt/media/ARM	*(rw,sync,no_root_squash,insecure)" | sudo tee -a /etc/exports
-		echo $pass | sudo -S ln -s /opt/ARM-Kodi-Setup/SERVER.service /etc/avahi/services/
+		echo $pass | sudo -S ln /opt/ARM-Kodi-Setup/SERVER.service /etc/avahi/services/
 	;;
 
 	RIPCLIENT)	
@@ -543,7 +569,7 @@ case $SERVERMODE in
 		##FIND SERVER AND MAP TO IT HERE 
 
 		echo $pass | sudo -S /etc/init.d/udev restart 
-		echo $pass | sudo -S ln -s /opt/ARM-Kodi-Setup/CLIENT.service /etc/avahi/services/
+		echo $pass | sudo -S ln /opt/ARM-Kodi-Setup/CLIENT.service /etc/avahi/services/
 	;;
 esac
 
@@ -632,7 +658,7 @@ echo $pass | sudo -S -v
 #chmod +x /opt/ARM-Kodi-Setup/Screensaver_Off.sh 
 #chmod +x /opt/ARM-Kodi-Setup/Screen-Saver-Off.desktop
 #chmod +x /opt/ARM-Kodi-Setup/VNC.desktop
-
+#echo $pass | sudo -S chown $theUser /opt/ARM-Kodi-Setup/autostart/
 
 
 

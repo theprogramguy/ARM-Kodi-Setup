@@ -2,7 +2,7 @@
 
 Type=Application
 
-Exec=/opt/ARM-Kodi-Setup/start.sh
+Exec=/opt/ARM-Kodi-Setup/Startup.sh
 
 Hidden=false
 
