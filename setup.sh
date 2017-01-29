@@ -561,6 +561,8 @@ case $SERVERMODE in
 		echo $pass | sudo -S /etc/init.d/udev restart  
 		echo "/mnt/media/ARM	*(rw,sync,no_root_squash,insecure)" | sudo tee -a /etc/exports
 		echo $pass | sudo -S ln /opt/ARM-Kodi-Setup/SERVER.service /etc/avahi/services/
+		echo $pass | sudo -S ln /etc/init.d/avahi-daemon restart
+		
 	;;
 
 	RIPCLIENT)	
